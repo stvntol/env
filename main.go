@@ -5,65 +5,54 @@ import (
 	"github.com/stvntol/dt/env"
 	"log"
 	"net/http"
-	"path"
-	"strings"
 )
 
 func main() {
 
 	e := &env.Env{"This isn't really a host name"}
 
-	index := e.HandlerFunc(Index)
+	index := e.RouterFunc(IndexRouter)
 
 	log.Printf("Server start")
 	err := http.ListenAndServe(":7357", index)
 	log.Printf("ERROR:Server Stopped: %s", err)
 }
 
-func ShiftPath(p string) (head, tail string) {
-	p = path.Clean("/" + p)
-	i := strings.Index(p[1:], "/") + 1
-	if i <= 0 {
-		return p[1:], "/"
-	}
-	return p[1:i], p[i:]
-}
-
-func Index(e *env.Env, w http.ResponseWriter, r *http.Request) error {
-
-	var head string
-	head, r.URL.Path = ShiftPath(r.URL.Path)
+func IndexRouter(e *env.Env, head string) http.Handler {
 
 	switch head {
 	case "favicon.ico":
-		http.NotFound(w, r)
+		return http.HandlerFunc(http.NotFound)
 
 	case "accounts":
-		w.Write([]byte("Accounts"))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Accounts"))
+		})
 
 	case "users":
-		// TODO figure out way to preserve full path in errors after ShiftPath.
-		e.HandlerFunc(UsersHandler).ServeHTTP(w, r)
+		return e.RouterFunc(UsersRouter)
 
 	case "restaurants":
-		w.Write([]byte("Restaurants"))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Restaurants"))
+		})
 
 	case "tables":
-		w.Write([]byte("Tables"))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Tables"))
+		})
 
 	default:
-		w.Write([]byte(e.Host))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(e.Host))
+		})
 	}
-
-	return nil
 
 }
 
-func UsersHandler(e *env.Env, w http.ResponseWriter, r *http.Request) error {
-	var username string
-	username, r.URL.Path = ShiftPath(r.URL.Path)
+func UsersRouter(e *env.Env, head string) http.Handler {
 
-	if username == "" {
+	if head == "" {
 		// handle
 		//
 		// 	GET
@@ -71,37 +60,44 @@ func UsersHandler(e *env.Env, w http.ResponseWriter, r *http.Request) error {
 		// 	POST
 		// 		register a new user. returns a session token
 		//
-		w.Write([]byte("Users"))
-		return nil
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Users"))
+		})
 	}
 
-	var head string
-	head, r.URL.Path = ShiftPath(r.URL.Path)
+	return e.RouterFunc(UsernameRouter(head))
 
-	switch head {
+}
 
-	case "avatar":
-	case "status":
-	case "bookmarks":
-	case "friends":
-	case "password":
-	case "ratings":
+func UsernameRouter(username string) env.RouterFunc {
+	return func(e *env.Env, head string) http.Handler {
+		switch head {
+		//		case "avatar":
+		//		case "status":
+		//		case "bookmarks":
+		//		case "friends":
+		//		case "password":
+		//		case "ratings":
+		//
+		//		case "session":
+		//		case "email-verification":
 
-	case "session":
-	case "email-verification":
+		case "error":
+			return e.HandlerFunc(func(e *env.Env, w http.ResponseWriter, r *http.Request) error {
+				return env.StatusError{
+					500,
+					errors.New("this was an intened error shh! error at head: " + head),
+					"Something went wrong " + username + " =(",
+				}
+			})
 
-	case "error":
-		return env.StatusError{
-			500,
-			errors.New("this was an intened error shh!"),
-			"Something went wrong " + username + " =(",
+		default:
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte("User: " + username + " " + head))
+			})
 		}
 
-	default:
-		w.Write([]byte("User: " + username + " " + head))
 	}
-
-	return nil
 }
 
 type UserHandler struct {

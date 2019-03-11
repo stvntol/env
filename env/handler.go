@@ -1,8 +1,12 @@
 package env
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"path"
+	"strconv"
+	"strings"
 )
 
 // Error is an error which provides access to a HTTP status code and an
@@ -109,4 +113,105 @@ func (esm *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (esm *ServeMux) Env() *Env {
 	return esm.e
+}
+
+/* Shift Path Routing*/
+
+type Router interface {
+	Handler
+	Handler(r *http.Request) (h http.Handler)
+}
+
+type router struct {
+	E *Env
+	R RouterFunc
+}
+
+func (rt router) Env() *Env {
+	return rt.E
+}
+
+func (rt router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rt.Handler(r).ServeHTTP(w, r)
+}
+
+func (rt router) Handler(r *http.Request) (h http.Handler) {
+	head, _ := shiftPathDepth(r)
+	return rt.R(rt.E, head)
+}
+
+type RouterFunc func(e *Env, head string) (h http.Handler)
+
+func shiftPathDepth(r *http.Request) (head string, depth int) {
+
+	path := r.URL.Path
+	ctx := r.Context()
+
+	depth = PathDepthFromContext(ctx)
+
+	head, _ = shiftPath(path, depth)
+	depth += 1
+
+	*r = *r.WithContext(WithPathDepth(ctx, depth))
+
+	return head, depth
+
+}
+
+func shiftPath(p string, depth int) (head, tail string) {
+	p = path.Clean("/" + p)
+
+	for d := 0; d <= depth; d++ {
+		i := strings.Index(p[1:], "/") + 1
+		if i <= 0 {
+			if depth > d {
+				return "", "/"
+			}
+			return p[1:], "/"
+		}
+		head = p[1:i]
+		p = p[i:]
+	}
+
+	return head, p
+}
+
+/* Context*/
+
+type contextPathDepthType struct{}
+
+var contextPathDepthKey = &contextPathDepthType{}
+
+const requestPathDepthHeader = "request-path-depth"
+
+// WithPathDepth puts the request URL path depth into the current context.
+func WithPathDepth(ctx context.Context, depth int) context.Context {
+	return context.WithValue(ctx, contextPathDepthKey, depth)
+}
+
+// PathDepthFromContext returns the path depth from context. If there is no
+// depth in the current context it returns 0.
+func PathDepthFromContext(ctx context.Context) int {
+	v := ctx.Value(contextPathDepthKey)
+	if v == nil {
+		return 0
+	}
+	return v.(int)
+}
+
+// PathDepthHandler is a middleware which places the routing path depth in to
+// the request context if it's found in the request header.
+func PathDepthHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		depth := r.Header.Get(requestPathDepthHeader)
+
+		d, err := strconv.Atoi(depth)
+		if err == nil {
+			r = r.WithContext(WithPathDepth(r.Context(), d))
+			r.Header.Del(requestPathDepthHeader)
+		}
+
+		h.ServeHTTP(w, r)
+	})
+
 }

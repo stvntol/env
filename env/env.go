@@ -8,3 +8,7 @@ type Env struct {
 func (e *Env) HandlerFunc(fn HandlerFunc) Handler {
 	return handler{e, fn}
 }
+
+func (e *Env) RouterFunc(fn RouterFunc) Handler {
+	return router{e, fn}
+}
