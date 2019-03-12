@@ -1,14 +1,31 @@
 package env
 
-// Env holds the application wide environment configuration.
+// Env holds the application wide environment data.
 type Env struct {
-	Host string
+	value       interface{}
+	errorHandle ErrorHandler
 }
 
+// HandlerFunc turns a HandlerFunc into a Handler
 func (e *Env) HandlerFunc(fn HandlerFunc) Handler {
 	return handler{e, fn}
 }
 
-func (e *Env) RouterFunc(fn RouterFunc) Handler {
+// RouterFunc turns a RouterFunc into a Router
+func (e *Env) RouterFunc(fn RouterFunc) Router {
 	return router{e, fn}
+}
+
+// Value returns whateve environment data was stored when the Env was created.
+func (e *Env) Value() interface{} {
+	return e.value
+}
+
+// NewEnv returns a pointer to a new Env.  If no ErrorHandler is provided
+// DefaultErrorHandler is used.
+func NewEnv(val interface{}, eh ErrorHandler) *Env {
+	if eh == nil {
+		return &Env{val, DefaultErrorHandler}
+	}
+	return &Env{val, eh}
 }

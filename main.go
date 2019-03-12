@@ -9,13 +9,17 @@ import (
 
 func main() {
 
-	e := &env.Env{"This isn't really a host name"}
+	e := env.NewEnv("This isn't really a host name", nil)
 
 	index := e.RouterFunc(IndexRouter)
 
 	log.Printf("Server start")
 	err := http.ListenAndServe(":7357", index)
 	log.Printf("ERROR:Server Stopped: %s", err)
+}
+
+func envData(e *env.Env) string {
+	return e.Value().(string)
 }
 
 func IndexRouter(e *env.Env, head string) http.Handler {
@@ -44,7 +48,7 @@ func IndexRouter(e *env.Env, head string) http.Handler {
 
 	default:
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(e.Host))
+			w.Write([]byte(envData(e)))
 		})
 	}
 
@@ -85,9 +89,9 @@ func UsernameRouter(username string) env.RouterFunc {
 		case "error":
 			return e.HandlerFunc(func(e *env.Env, w http.ResponseWriter, r *http.Request) error {
 				return env.StatusError{
-					500,
-					errors.New("this was an intened error shh! error at head: " + head),
-					"Something went wrong " + username + " =(",
+					Code: 500,
+					Err:  errors.New("this was an intened error shh! error at head: " + head),
+					Msg:  "Something went wrong " + username + " =(",
 				}
 			})
 
@@ -107,7 +111,7 @@ type UserHandler struct {
 }
 
 func (u *UserHandler) Message(e *env.Env, w http.ResponseWriter, r *http.Request) error {
-	msg := "Generic Message: " + e.Host + " " + u.Username
+	msg := "Generic Message: " + envData(e) + " " + u.Username
 	w.Write([]byte(msg))
 	return nil
 }

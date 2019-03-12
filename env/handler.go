@@ -66,23 +66,34 @@ func (h handler) Env() *Env {
 
 // ServeHTTP allows the handler type to satisfy http.Handler.
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
 	err := h.H(h.Env(), w, r)
 	if err != nil {
-		switch e := err.(type) {
-		case StatusError:
-			// We can retrieve the status here and write out a specific
-			// HTTP status code.
-			log.Printf("HTTP %d - %s %s", e.Status(), e, path)
-			http.Error(w, e.Message(), e.Status())
-		default:
-			// Any error types we don't specifically look out for default
-			// to serving a HTTP 500
-			http.Error(w, http.StatusText(http.StatusInternalServerError),
-				http.StatusInternalServerError)
-		}
+		h.Env().errorHandle(err, h.Env(), w, r)
 	}
 }
+
+// ErrorHandler handles errors in handler's ServeHTTP method
+type ErrorHandler func(error, *Env, http.ResponseWriter, *http.Request)
+
+// DefaultErrorHandler handles errors in handler's ServeHTTP method unless
+// another handler was specified when the Env was created.
+func DefaultErrorHandler(err error, env *Env, w http.ResponseWriter, r *http.Request) {
+	switch e := err.(type) {
+	case StatusError:
+		// We can retrieve the status here and write out a specific
+		// HTTP status code.
+		log.Printf("HTTP %d - %s %s", e.Status(), e, r.URL.Path)
+		http.Error(w, e.Message(), e.Status())
+	default:
+		// Any error types we don't specifically look out for default
+		// to serving a HTTP 500
+		http.Error(w, http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError)
+	}
+
+}
+
+/* ServeMux */
 
 // ServeMux is an HTTP request multiplexer that registers Handlers.
 type ServeMux struct {
@@ -111,36 +122,54 @@ func (esm *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	esm.mux.ServeHTTP(w, r)
 }
 
+// Env makes ServeMux implement Handler
 func (esm *ServeMux) Env() *Env {
 	return esm.e
 }
 
-/* Shift Path Routing*/
+/* Shift Path Routing */
 
+// Router is a Handler which servers an http.Handler based on a http.Request.
 type Router interface {
 	Handler
 	Handler(r *http.Request) (h http.Handler)
 }
 
+// router implements Router.
 type router struct {
 	E *Env
 	R RouterFunc
 }
 
+// RouterFunc is a function which picks an http.Handler based off the value of
+// a 'head' string (section or the r.URL.Path). It takes an *Env so that the
+// returned http.Handlers can be Handlers.
+type RouterFunc func(e *Env, head string) (h http.Handler)
+
+// Env makes router implement Handler
 func (rt router) Env() *Env {
 	return rt.E
 }
 
+// ServeHTTP makes router implement http.Handler
 func (rt router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rt.Handler(r).ServeHTTP(w, r)
 }
 
+// Handler allows for the retrieval of an http.Handler based on the
+// http.Request. Each successive Router steps through http.Request.URL.Path as
+// it routes.
+// For example for a request to /users/{user-id}/orders the first router only
+// considers the value 'users' to decided which handler to return. If it
+// returns another Router that one will only consider the value {user-id}. If
+// that returns another Router that router will only consider 'orders' to
+// decided which handler to return.
+// Based on the routing method described here:
+// https://blog.merovius.de/2017/06/18/how-not-to-use-an-http-router.html
 func (rt router) Handler(r *http.Request) (h http.Handler) {
 	head, _ := shiftPathDepth(r)
 	return rt.R(rt.E, head)
 }
-
-type RouterFunc func(e *Env, head string) (h http.Handler)
 
 func shiftPathDepth(r *http.Request) (head string, depth int) {
 
@@ -149,8 +178,8 @@ func shiftPathDepth(r *http.Request) (head string, depth int) {
 
 	depth = PathDepthFromContext(ctx)
 
-	head, _ = shiftPath(path, depth)
-	depth += 1
+	head, _ = ShiftPath(path, depth)
+	depth++
 
 	*r = *r.WithContext(WithPathDepth(ctx, depth))
 
@@ -158,7 +187,11 @@ func shiftPathDepth(r *http.Request) (head string, depth int) {
 
 }
 
-func shiftPath(p string, depth int) (head, tail string) {
+// ShiftPath cleans and selects a part of a path. If the path was /a/b/c/d and
+// ShiftPath was passed depth = 2. It would return head = c, tail = /d. If
+// depth = 3 it would return head = d, tail = / and any depth greater than 3
+// will return head = '', tail = /
+func ShiftPath(p string, depth int) (head, tail string) {
 	p = path.Clean("/" + p)
 
 	for d := 0; d <= depth; d++ {
@@ -176,7 +209,7 @@ func shiftPath(p string, depth int) (head, tail string) {
 	return head, p
 }
 
-/* Context*/
+/* Context */
 
 type contextPathDepthType struct{}
 
