@@ -16,9 +16,14 @@ func (e *Env) RouterFunc(fn RouterFunc) Router {
 	return router{e, fn}
 }
 
-// Value returns whateve environment data was stored when the Env was created.
+// Value returns whatever environment data was stored when the Env was created.
 func (e *Env) Value() interface{} {
 	return e.value
+}
+
+// ErrorHandler returns the environement's error handler
+func (e *Env) ErrorHandler() ErrorHandler {
+	return e.errorHandle
 }
 
 // NewEnv returns a pointer to a new Env.  If no ErrorHandler is provided

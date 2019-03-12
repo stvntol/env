@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	e := env.NewEnv("This isn't really a host name", nil)
+	e := env.NewEnv(&DataSource{}, nil)
 
 	index := e.RouterFunc(IndexRouter)
 
@@ -18,8 +18,15 @@ func main() {
 	log.Printf("ERROR:Server Stopped: %s", err)
 }
 
-func envData(e *env.Env) string {
-	return e.Value().(string)
+func envData(e *env.Env) *DataSource {
+	return e.Value().(*DataSource)
+}
+
+type DataSource struct {
+}
+
+func (d *DataSource) String() string {
+	return "This is a data source"
 }
 
 func IndexRouter(e *env.Env, head string) http.Handler {
@@ -29,29 +36,34 @@ func IndexRouter(e *env.Env, head string) http.Handler {
 		return http.HandlerFunc(http.NotFound)
 
 	case "accounts":
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Accounts"))
-		})
+		return dumb("Accounts")
 
-	case "users":
-		return e.RouterFunc(UsersRouter)
+	case "health":
+		return dumb("Status Ok")
 
 	case "restaurants":
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Restaurants"))
-		})
+		return dumb("Restaurants")
 
 	case "tables":
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Tables"))
-		})
+		return env.SwapHandlerFunc(e, RequesterAuth, dumb("Tables").F)
+
+	case "users":
+		return env.SwapRouterFunc(e, RequesterAuth, UsersRouter)
 
 	default:
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(envData(e)))
-		})
+		return dumb(envData(e).String())
 	}
 
+}
+
+type dumb string
+
+func (d dumb) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(d))
+}
+func (d dumb) F(e *env.Env, w http.ResponseWriter, r *http.Request) error {
+	w.Write([]byte(d))
+	return nil
 }
 
 func UsersRouter(e *env.Env, head string) http.Handler {
@@ -64,9 +76,7 @@ func UsersRouter(e *env.Env, head string) http.Handler {
 		// 	POST
 		// 		register a new user. returns a session token
 		//
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Users"))
-		})
+		return dumb("Users")
 	}
 
 	return e.RouterFunc(UsernameRouter(head))
@@ -111,7 +121,7 @@ type UserHandler struct {
 }
 
 func (u *UserHandler) Message(e *env.Env, w http.ResponseWriter, r *http.Request) error {
-	msg := "Generic Message: " + envData(e) + " " + u.Username
+	msg := "Generic Message: " + envData(e).String() + " " + u.Username
 	w.Write([]byte(msg))
 	return nil
 }
@@ -120,33 +130,4 @@ func (u *UserHandler) Greeting(e *env.Env, w http.ResponseWriter, r *http.Reques
 	msg := "Hello " + u.Username
 	w.Write([]byte(msg))
 	return nil
-}
-
-func verifyMiddleware(next env.Handler) env.Handler {
-
-	return next.Env().HandlerFunc(
-		func(e *env.Env, w http.ResponseWriter, r *http.Request) error {
-
-			// Do verification stuff
-			r.ParseForm()
-			username := r.FormValue("username")
-			// id := r.RemoteAddr
-
-			// failure return error
-			if username == "" {
-				return env.StatusError{
-					Code: http.StatusUnauthorized,
-					Err:  errors.New(http.StatusText(http.StatusUnauthorized)),
-				}
-			}
-
-			// user := UserHandler{
-			// 	id,
-			// 	username,
-			// 	next.Env(),
-			// }
-
-			next.ServeHTTP(w, r)
-			return nil
-		})
 }

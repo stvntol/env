@@ -248,3 +248,46 @@ func PathDepthHandler(h http.Handler) http.Handler {
 	})
 
 }
+
+/* Swap Env Handler */
+
+// SwapCondition is a function used as a test for SwapHandlerFunc and
+// SwapRouterFunc. It may return a new Env ot be passed down to futher
+// handlers.
+type SwapCondition func(e *Env, r *http.Request) (*Env, error)
+
+// SwapHandlerFunc returns a Handler made from the HandlerFunc passed to it if
+// the SwapCondition passed to it returns a nil error. If the SwapCondition
+// returns an error that error will be handled by the ErrorHandler of the Env
+// passed to it and not the one return by SwapCondtion.
+func SwapHandlerFunc(e *Env, con SwapCondition, handler HandlerFunc) Handler {
+	return e.HandlerFunc(func(e *Env, w http.ResponseWriter, r *http.Request) error {
+
+		newEnv, err := con(e, r)
+		if err != nil {
+			return err
+		}
+
+		newEnv.HandlerFunc(handler).ServeHTTP(w, r)
+		return nil
+	})
+
+}
+
+// SwapRouterFunc returns a Handler made from the RouterFunc passed to it if
+// the SwapCondition passed to it returns a nil error. If the SwapCondition
+// returns an error that error will be handled by the ErrorHandler of the Env
+// passed to it and not the one return by SwapCondtion.
+func SwapRouterFunc(e *Env, con SwapCondition, router RouterFunc) Handler {
+	return e.HandlerFunc(func(e *Env, w http.ResponseWriter, r *http.Request) error {
+
+		newEnv, err := con(e, r)
+		if err != nil {
+			return err
+		}
+
+		newEnv.RouterFunc(router).ServeHTTP(w, r)
+		return nil
+	})
+
+}
