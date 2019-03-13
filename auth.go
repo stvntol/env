@@ -13,8 +13,17 @@ type Requester struct {
 	d        *DataSource
 }
 
-func envRequester(e *env.Env) *Requester {
+type RequesterHandler func(*Requester, http.ResponseWriter, *http.Request) error
+
+func RequesterFromEnv(e *env.Env) *Requester {
 	return e.Value().(*Requester)
+}
+
+func RequesterHandleFunc(e *env.Env, requestHandler RequesterHandler) env.Handler {
+	return e.HandlerFunc(func(e *env.Env, w http.ResponseWriter, r *http.Request) error {
+		req := RequesterFromEnv(e)
+		return requestHandler(req, w, r)
+	})
 }
 
 func RequesterAuth(e *env.Env, r *http.Request) (*env.Env, error) {

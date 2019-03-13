@@ -103,7 +103,7 @@ func TableIDRouter(tableID string) env.RouterFunc {
 	return func(e *env.Env, head string) http.Handler {
 		switch head {
 		case "":
-			return dumb(fmt.Sprintf("Table ID %s", tableID, head))
+			return dumb(fmt.Sprintf("Table ID %s", tableID))
 		case "chat":
 			return dumb(fmt.Sprintf("Table ID %s's %s", tableID, head))
 		case "invite":
@@ -118,7 +118,7 @@ func TableIDRouter(tableID string) env.RouterFunc {
 func UsersRouter(e *env.Env, head string) http.Handler {
 
 	if head == "" {
-		return dumb("Users")
+		return RequesterHandleFunc(e, UsersHandler)
 	}
 
 	return e.RouterFunc(UsernameRouter(head))
@@ -130,25 +130,25 @@ func UsernameRouter(username string) env.RouterFunc {
 		switch head {
 
 		case "avatar":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).AvatarHandler)
 
 		case "bookmarks":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).BookmarksHandler)
 
 		case "friends":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).FriendsHandler)
 
 		case "password":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).PasswordHandler)
 
 		case "ratings":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).RatingsHandler)
 
 		case "session":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).SessionHandler)
 
 		case "status":
-			return dumb(fmt.Sprintf("%s's %s", username, head))
+			return RequesterHandleFunc(e, Username(username).StatusHandler)
 
 		default:
 			return e.HandlerFunc(StatusNotFoundHandler)

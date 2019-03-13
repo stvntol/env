@@ -5,6 +5,7 @@ import (
 	"github.com/stvntol/dt/env"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func main() {
@@ -31,11 +32,14 @@ func (d *DataSource) String() string {
 
 type dumb string
 
+func (d dumb) String() string {
+	return strings.Title(string(d))
+}
 func (d dumb) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(d))
+	w.Write([]byte(d.String()))
 }
 func (d dumb) F(e *env.Env, w http.ResponseWriter, r *http.Request) error {
-	w.Write([]byte(d))
+	w.Write([]byte(d.String()))
 	return nil
 }
 
