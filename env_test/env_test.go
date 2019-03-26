@@ -1,7 +1,7 @@
 package env_test
 
 import (
-	. "github.com/stvntol/dt/env"
+	. "github.com/stvntol/env"
 	"path"
 	"strings"
 	"testing"
