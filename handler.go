@@ -10,7 +10,7 @@ import (
 )
 
 // Error is an error which provides access to a HTTP status code and an
-// optional message for the HTTP response.
+// alternative message for the HTTP response.
 type Error interface {
 	error
 	Status() int
@@ -112,8 +112,8 @@ func (esm *ServeMux) HandleFunc(pattern string, hf HandlerFunc) {
 }
 
 // Handle registers the handler for a given pattern.
-func (esm *ServeMux) Handle(pattern string, handler Handler) {
-	esm.mux.Handle(pattern, handler)
+func (esm *ServeMux) Handle(pattern string, h Handler) {
+	esm.mux.Handle(pattern, h)
 }
 
 // ServeHTTP dispatches the request to the handler whose pattern most closely
@@ -252,7 +252,7 @@ func PathDepthHandler(h http.Handler) http.Handler {
 /* Swap Env Handler */
 
 // SwapCondition is a function used as a test for SwapHandlerFunc and
-// SwapRouterFunc. It may return a new Env ot be passed down to futher
+// SwapRouterFunc. It may return a new Env or be passed down to futher
 // handlers.
 type SwapCondition func(e *Env, r *http.Request) (*Env, error)
 
@@ -260,7 +260,7 @@ type SwapCondition func(e *Env, r *http.Request) (*Env, error)
 // the SwapCondition passed to it returns a nil error. If the SwapCondition
 // returns an error that error will be handled by the ErrorHandler of the Env
 // passed to it and not the one return by SwapCondtion.
-func SwapHandlerFunc(e *Env, con SwapCondition, handler HandlerFunc) Handler {
+func SwapHandlerFunc(e *Env, con SwapCondition, h HandlerFunc) handler {
 	return e.HandlerFunc(func(e *Env, w http.ResponseWriter, r *http.Request) error {
 
 		newEnv, err := con(e, r)
@@ -268,7 +268,7 @@ func SwapHandlerFunc(e *Env, con SwapCondition, handler HandlerFunc) Handler {
 			return err
 		}
 
-		newEnv.HandlerFunc(handler).ServeHTTP(w, r)
+		newEnv.HandlerFunc(h).ServeHTTP(w, r)
 		return nil
 	})
 
@@ -278,7 +278,7 @@ func SwapHandlerFunc(e *Env, con SwapCondition, handler HandlerFunc) Handler {
 // the SwapCondition passed to it returns a nil error. If the SwapCondition
 // returns an error that error will be handled by the ErrorHandler of the Env
 // passed to it and not the one return by SwapCondtion.
-func SwapRouterFunc(e *Env, con SwapCondition, router RouterFunc) Handler {
+func SwapRouterFunc(e *Env, con SwapCondition, routerFn RouterFunc) handler {
 	return e.HandlerFunc(func(e *Env, w http.ResponseWriter, r *http.Request) error {
 
 		newEnv, err := con(e, r)
@@ -286,7 +286,7 @@ func SwapRouterFunc(e *Env, con SwapCondition, router RouterFunc) Handler {
 			return err
 		}
 
-		newEnv.RouterFunc(router).ServeHTTP(w, r)
+		newEnv.RouterFunc(routerFn).ServeHTTP(w, r)
 		return nil
 	})
 

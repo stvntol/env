@@ -7,12 +7,12 @@ type Env struct {
 }
 
 // HandlerFunc turns a HandlerFunc into a Handler
-func (e *Env) HandlerFunc(fn HandlerFunc) Handler {
+func (e *Env) HandlerFunc(fn HandlerFunc) handler {
 	return handler{e, fn}
 }
 
 // RouterFunc turns a RouterFunc into a Router
-func (e *Env) RouterFunc(fn RouterFunc) Router {
+func (e *Env) RouterFunc(fn RouterFunc) router {
 	return router{e, fn}
 }
 
