@@ -93,40 +93,6 @@ func DefaultErrorHandler(err error, env *Env, w http.ResponseWriter, r *http.Req
 
 }
 
-/* ServeMux */
-
-// ServeMux is an HTTP request multiplexer that registers Handlers.
-type ServeMux struct {
-	e   *Env
-	mux *http.ServeMux
-}
-
-// NewServeMux allocates and returns a new EnvServeMux.
-func NewServeMux(env *Env) *ServeMux {
-	return &ServeMux{env, http.NewServeMux()}
-}
-
-// HandleFunc registers the handler function for a given pattern.
-func (esm *ServeMux) HandleFunc(pattern string, hf HandlerFunc) {
-	esm.mux.Handle(pattern, handler{esm.e, hf})
-}
-
-// Handle registers the handler for a given pattern.
-func (esm *ServeMux) Handle(pattern string, h Handler) {
-	esm.mux.Handle(pattern, h)
-}
-
-// ServeHTTP dispatches the request to the handler whose pattern most closely
-// matches the request URL.
-func (esm *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	esm.mux.ServeHTTP(w, r)
-}
-
-// Env makes ServeMux implement Handler
-func (esm *ServeMux) Env() *Env {
-	return esm.e
-}
-
 /* Shift Path Routing */
 
 // Router is a Handler which servers an http.Handler based on a http.Request.
