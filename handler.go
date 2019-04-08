@@ -92,7 +92,7 @@ func DefaultErrorHandler(err error, env *Env, w http.ResponseWriter, r *http.Req
 /* Swap Env Handler */
 
 // SwapCondition is a function used as a test for SwapEnvHandler and
-// SwapEnvRouter. It may return a new Env or be passed down to futher
+// SwapEnvRouter. It may return a new Env or be passed down to further
 // handlers.
 type SwapCondition func(e *Env, r *http.Request) (*Env, error)
 
