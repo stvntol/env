@@ -40,11 +40,13 @@ func (rt router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Handler allows for the retrieval of an http.Handler based on the
 // http.Request. Each successive Router steps through http.Request.URL.Path as
 // it routes.
+//
 // For example for a request to /users/{user-id}/orders the first router only
 // considers the value 'users' to decided which handler to return. If it
 // returns another Router that one will only consider the value {user-id}. If
 // that returns another Router that router will only consider 'orders' to
 // decided which handler to return.
+//
 // Based on the routing method described here:
 // https://blog.merovius.de/2017/06/18/how-not-to-use-an-http-router.html
 func (rt router) Handler(r *http.Request) (h http.Handler) {
@@ -68,10 +70,11 @@ func shiftPathDepth(r *http.Request) (head string, depth int) {
 
 }
 
-// ShiftPath cleans and selects a part of a path. If the path was /a/b/c/d and
-// ShiftPath was passed depth = 2. It would return head = c, tail = /d. If
-// depth = 3 it would return head = d, tail = / and any depth greater than 3
-// will return head = '', tail = /
+// ShiftPath cleans and selects a part of a path.
+//
+// If the path was /a/b/c/d and ShiftPath was passed depth = 2. It would return
+// head = c, tail = /d. If depth = 3 it would return head = d, tail = / and any
+// depth greater than 3 will return head = '', tail = /
 func ShiftPath(p string, depth int) (head, tail string) {
 	p = path.Clean("/" + p)
 
