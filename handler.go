@@ -92,15 +92,15 @@ func DefaultErrorHandler(err error, env *Env, w http.ResponseWriter, r *http.Req
 /* Swap Env Handler */
 
 // SwapCondition is a function used as a test for SwapHandlerFunc and
-// SwapRouterFunc. It may return a new Env or be passed down to futher
+// SwapRouterFunc. It may return a new Env or which may be used by further
 // handlers.
 type SwapCondition func(e *Env, r *http.Request) (*Env, error)
 
-// SwapHandlerFunc returns a Handler made from the HandlerFunc passed to it if
+// SwapEnvHandler returns a Handler made from the HandlerFunc passed to it if
 // the SwapCondition passed to it returns a nil error. If the SwapCondition
 // returns an error that error will be handled by the ErrorHandler of the Env
 // passed to it and not the one return by SwapCondtion.
-func SwapHandlerFunc(e *Env, con SwapCondition, h HandlerFunc) handler {
+func SwapEnvHandler(e *Env, con SwapCondition, h HandlerFunc) handler {
 	return e.HandlerFunc(func(e *Env, w http.ResponseWriter, r *http.Request) error {
 
 		newEnv, err := con(e, r)
@@ -114,11 +114,11 @@ func SwapHandlerFunc(e *Env, con SwapCondition, h HandlerFunc) handler {
 
 }
 
-// SwapRouterFunc returns a Handler made from the RouterFunc passed to it if
+// SwapEnvRouter returns a Handler made from the RouterFunc passed to it if
 // the SwapCondition passed to it returns a nil error. If the SwapCondition
 // returns an error that error will be handled by the ErrorHandler of the Env
 // passed to it and not the one return by SwapCondtion.
-func SwapRouterFunc(e *Env, con SwapCondition, routerFn RouterFunc) handler {
+func SwapEnvRouter(e *Env, con SwapCondition, routerFn RouterFunc) handler {
 	return e.HandlerFunc(func(e *Env, w http.ResponseWriter, r *http.Request) error {
 
 		newEnv, err := con(e, r)
